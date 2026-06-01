@@ -1,0 +1,27 @@
+<script setup lang="ts">
+import { inject } from 'vue'
+import type { VueWrapperProps } from "@visuallyjs/browser-ui-vue"
+import type { Gantt } from '../defs'
+import { BAR_HEIGHT } from '../constants'
+
+const { data, obj } = defineProps<VueWrapperProps>()
+const gantt = inject<Gantt>('gantt')!
+</script>
+
+<template>
+    <div class="vjs-gantt-task"
+         data-vjs-target="true"
+         :style="{
+             left: data.left + 'px',
+             width: data.size + 'px',
+             height: BAR_HEIGHT + 'px',
+             backgroundColor: data.color
+         }"
+         data-vjs-y-resize="false"
+         data-vjs-show-progress="true">
+        <div class="vjs-gantt-progress-value">{{ data.progress }}</div>
+        <div class="vjs-gantt-progress-gauge" :style="{ width: data.progress + '%' }"></div>
+        <div class="vjs-gantt-delete" @click="gantt.removeTask(obj.id)">×</div>
+        <div class="vjs-gantt-connect" data-vjs-source="true">+</div>
+    </div>
+</template>
