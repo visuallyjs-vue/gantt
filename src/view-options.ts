@@ -1,11 +1,11 @@
 import { EVENT_TAP, PlainArrowOverlay, NodeEventCallbackPayload, EdgeEventCallbackPayload } from "@visuallyjs/browser-ui"
-import { TYPE_TASK, TYPE_TASK_GROUP, TYPE_MILESTONE } from "./constants"
-import TaskComponent from "./components/TaskComponent.vue"
-import TaskGroupComponent from "./components/TaskGroupComponent.vue"
-import MilestoneComponent from "./components/MilestoneComponent.vue"
-import { confirmTaskDeletion } from "./util"
+import { TYPE_TASK, TYPE_TASK_GROUP, TYPE_MILESTONE } from "./gantt/constants"
+import {Gantt} from "./gantt/gantt";
+import TaskComponent from "./components/TaskComponent.vue";
+import TaskGroupComponent from "./components/TaskGroupComponent.vue";
+import MilestoneComponent from "./components/MilestoneComponent.vue";
 
-export function generateView() {
+export function generateView(gantt:Gantt) {
     return {
         nodes: {
             selectable: {
@@ -42,9 +42,7 @@ export function generateView() {
                 ],
                 events: {
                     [EVENT_TAP]: (e: EdgeEventCallbackPayload) => {
-                        confirmTaskDeletion("Delete", `Delete dependency?`, () => {
-                            e.model.removeEdge(e.obj)
-                        })
+                        gantt.maybeDeleteDependency(e.obj)
                     }
                 }
             }

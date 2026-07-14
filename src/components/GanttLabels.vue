@@ -1,69 +1,33 @@
 <script setup lang="ts">
-import { inject, ref, onMounted, onUnmounted, watch } from 'vue'
-import { EVENT_DATA_UPDATED, EVENT_REDO, EVENT_UNDO, EVENT_ZOOM, type Node } from "@visuallyjs/browser-ui"
-import type { Gantt } from "../defs"
-import { TYPE_TASK_GROUP } from "../constants"
-import { editTask } from "../util"
-import {VisuallyJsService, VisuallyJsServiceKey} from "@visuallyjs/browser-ui-vue";
-
-type LabelEntry = { id: string, name: string, indent: number, type: string, collapsed?: boolean }
+import { ref, inject, onMounted, onUnmounted, watch, computed } from 'vue'
+import { EVENT_DATA_UPDATED, EVENT_REDO, EVENT_UNDO, type Node } from "@visuallyjs/browser-ui"
+import { TYPE_TASK_GROUP } from "../gantt/constants"
+import { VisuallyJsService, VisuallyJsServiceKey, useZoom } from "@visuallyjs/browser-ui-vue";
+import { useGanttContext } from '../gantt-context'
+import {LabelEntry} from "../gantt/defs";
 
 const entries = ref<Array<LabelEntry>>([])
-const gantt = inject<Gantt>('gantt')!
-const zoom = ref(1)
-
-const service:VisuallyJsService = inject(VisuallyJsServiceKey)
+const gantt = useGanttContext()
+const zoom = useZoom()
 
 function repaint() {
-    if (gantt != null) {
-        requestAnimationFrame(() => {
-            const newEntries: Array<LabelEntry> = []
-
-            function _one(entry: Node, indent: number) {
-                const collapsed = entry.data['collapsed'] === true
-                newEntries.push({ id: entry.id, name: entry.data.name, indent, type: entry.type, collapsed })
-                if (!collapsed) {
-                    gantt.listSubtasks(entry).forEach(st => _one(st, indent + 1))
-                }
-            }
-
-            gantt.listTopLevelTasks().forEach(entry => {
-                _one(entry, 0)
-            })
-
-            entries.value = newEntries
-        })
+    if (gantt.value != null) {
+      entries.value = gantt.value.labels
     }
 }
 
-let cleanupZoom: (() => void) | null = null
+onMounted(() => {
+    if (gantt.value) {
+        const updateHandler = () => repaint()
 
-onMounted(async () => {
-    service.getSurface((surface) => {
-      const zoomHandler = (z: { zoom: number }) => {
-        zoom.value = z.zoom
-      }
-      surface.bind(EVENT_ZOOM, zoomHandler)
-      cleanupZoom = () => surface.unbind(EVENT_ZOOM, zoomHandler)
+        gantt.value.bind("update", updateHandler)
 
-      const undoHandler = () => repaint()
-      const redoHandler = () => repaint()
-      const updateHandler = () => repaint()
+        repaint()
 
-      gantt.model.bind(EVENT_DATA_UPDATED, updateHandler)
-      gantt.model.bind(EVENT_UNDO, undoHandler)
-      gantt.model.bind(EVENT_REDO, redoHandler)
-
-      repaint()
-
-      onUnmounted(() => {
-        if (cleanupZoom) cleanupZoom()
-        gantt.model.unbind(EVENT_DATA_UPDATED, updateHandler)
-        gantt.model.unbind(EVENT_UNDO, undoHandler)
-        gantt.model.unbind(EVENT_REDO, redoHandler)
-      })
-    })
-
+        onUnmounted(() => {
+          gantt.value.unbind("update", updateHandler)
+        })
+    }
 })
 
 watch(() => gantt, repaint)
@@ -79,11 +43,8 @@ watch(() => gantt, repaint)
                 </div>
                 {{ entry.name }}
                 <div class="vjs-gantt-task-label-controls">
-                    <div class="vjs-gantt-task-label-edit" @click.stop="editTask(gantt, entry.id)">
+                    <div class="vjs-gantt-task-label-edit" @click.stop="gantt.editTask(entry.id)">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                    </div>
-                    <div class="vjs-gantt-task-label-delete" @click.stop="gantt.removeTask(entry.id)">
-                        &times;
                     </div>
                 </div>
             </div>
